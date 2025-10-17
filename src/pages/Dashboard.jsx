@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Package, ShoppingCart, DollarSign, Clock, Rocket } from "lucide-react"
@@ -7,55 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useTourGuide, dashboardTourSteps } from "@/components/TourGuide"
-
-const stats = [
-  {
-    title: "Total Products",
-    value: "245",
-    icon: Package,
-    change: "+12%",
-    color: "text-blue-600"
-  },
-  {
-    title: "Total Orders",
-    value: "1,234",
-    icon: ShoppingCart,
-    change: "+23%",
-    color: "text-green-600"
-  },
-  {
-    title: "Earnings",
-    value: "$45,231",
-    icon: DollarSign,
-    change: "+18%",
-    color: "text-yellow-600"
-  },
-  {
-    title: "Pending Orders",
-    value: "23",
-    icon: Clock,
-    change: "-5%",
-    color: "text-red-600"
-  }
-]
-
-const recentOrders = [
-  { id: "#ORD-001", customer: "Alice Johnson", product: "Wireless Headphones", amount: "$89.99", status: "Delivered", date: "2024-03-15" },
-  { id: "#ORD-002", customer: "Bob Smith", product: "Smart Watch", amount: "$299.99", status: "Pending", date: "2024-03-14" },
-  { id: "#ORD-003", customer: "Carol White", product: "Laptop Stand", amount: "$45.50", status: "Delivered", date: "2024-03-13" },
-  { id: "#ORD-004", customer: "David Brown", product: "USB-C Cable", amount: "$12.99", status: "Cancelled", date: "2024-03-12" },
-  { id: "#ORD-005", customer: "Emma Davis", product: "Phone Case", amount: "$19.99", status: "Delivered", date: "2024-03-11" }
-]
-
-const chartData = [
-  { name: 'Jan', value: 4000 },
-  { name: 'Feb', value: 3000 },
-  { name: 'Mar', value: 5000 },
-  { name: 'Apr', value: 4500 },
-  { name: 'May', value: 6000 },
-  { name: 'Jun', value: 5500 }
-]
+import { useAuth } from "@/context/AuthContext"
+import { getDashboardStats, getRecentOrders, getMonthlyRevenue } from "@/services/dashboardService"
+// import { useTourGuide, dashboardTourSteps } from "@/components/TourGuide"
 
 const container = {
   hidden: { opacity: 0 },
@@ -74,30 +28,116 @@ const item = {
 
 export function Dashboard() {
   const [searchParams] = useSearchParams()
-  const { startTour } = useTourGuide(dashboardTourSteps)
+  const { user } = useAuth()
+  // const { startTour } = useTourGuide(dashboardTourSteps)
+  
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    totalOrders: 0,
+    pendingOrders: 0,
+    totalEarnings: 0
+  })
+  const [recentOrders, setRecentOrders] = useState([])
+  const [chartData, setChartData] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Start tour if coming from onboarding
-    if (searchParams.get('tour') === 'start') {
-      setTimeout(() => {
-        startTour()
-      }, 500) // Small delay to ensure DOM is ready
+    if (user) {
+      loadDashboardData()
     }
-  }, [searchParams, startTour])
+  }, [user])
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true)
+      const [statsData, ordersData, revenueData] = await Promise.all([
+        getDashboardStats(),
+        getRecentOrders(5),
+        getMonthlyRevenue()
+      ])
+      
+      setStats(statsData)
+      setRecentOrders(ordersData)
+      setChartData(revenueData)
+    } catch (error) {
+      console.error("Error loading dashboard data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // useEffect(() => {
+  //   // Start tour if coming from onboarding
+  //   if (searchParams.get('tour') === 'start' && user) {
+  //     setTimeout(() => {
+  //       startTour()
+  //     }, 500) // Small delay to ensure DOM is ready
+  //   }
+  // }, [searchParams, startTour, user])
+
+  const getStatusBadge = (status) => {
+    const variants = {
+      Delivered: "default",
+      Pending: "secondary",
+      Cancelled: "destructive"
+    }
+    return variants[status] || "default"
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const statsCards = [
+    {
+      title: "Total Products",
+      value: stats.totalProducts.toString(),
+      icon: Package,
+      change: "+12%",
+      color: "text-blue-600"
+    },
+    {
+      title: "Total Orders",
+      value: stats.totalOrders.toString(),
+      icon: ShoppingCart,
+      change: "+23%",
+      color: "text-green-600"
+    },
+    {
+      title: "Earnings",
+      value: `$${stats.totalEarnings.toFixed(2)}`,
+      icon: DollarSign,
+      change: "+18%",
+      color: "text-yellow-600"
+    },
+    {
+      title: "Pending Orders",
+      value: stats.pendingOrders.toString(),
+      icon: Clock,
+      change: stats.pendingOrders > 0 ? "-5%" : "0%",
+      color: "text-red-600"
+    }
+  ]
 
   return (
     <div className="space-y-6" data-tour="dashboard">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's your store overview.</p>
-        </div>
-        <Button variant="outline" onClick={startTour}>
-          <Rocket className="mr-2 h-4 w-4" />
-          Take a Tour
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">Welcome back! Here's your store overview.</p>
       </div>
-
+      {/* <Button variant="outline" onClick={startTour}>
+        <Rocket className="mr-2 h-4 w-4" />
+        Take a Tour
+      </Button> */}
+    </div>
       <motion.div
         variants={container}
         initial="hidden"
@@ -105,7 +145,7 @@ export function Dashboard() {
         className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
         data-tour="stats-cards"
       >
-        {stats.map((stat, index) => (
+        {statsCards.map((stat, index) => (
           <motion.div key={index} variants={item}>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -169,31 +209,31 @@ export function Dashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order ID</TableHead>
                     <TableHead>Customer</TableHead>
+                    <TableHead>Product</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentOrders.map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-medium">{order.id}</TableCell>
-                      <TableCell>{order.customer}</TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={
-                            order.status === "Delivered"
-                              ? "default"
-                              : order.status === "Pending"
-                              ? "secondary"
-                              : "destructive"
-                          }
-                        >
-                          {order.status}
-                        </Badge>
+                  {recentOrders.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                        No orders yet
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    recentOrders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell>{order.customer_name}</TableCell>
+                        <TableCell>{order.products?.name || 'Unknown Product'}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadge(order.status)}>
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>

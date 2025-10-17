@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
 import { TourGuideClient } from '@sjmc11/tourguidejs';
-import '@sjmc11/tourguidejs/src/scss/tour.scss';
 
 export function useTourGuide(steps, options = {}) {
   const tourRef = useRef(null);
@@ -14,6 +13,7 @@ export function useTourGuide(steps, options = {}) {
         showStepProgress: true,
         exitOnClickOutside: false,
         exitOnEscape: true,
+        padding: 10,
         ...options,
       });
     }
@@ -28,7 +28,20 @@ export function useTourGuide(steps, options = {}) {
 
   const startTour = () => {
     if (tourRef.current) {
-      tourRef.current.start();
+      // Wait for DOM to be ready and scroll first element into view
+      setTimeout(() => {
+        const firstTarget = document.querySelector(steps[0]?.target);
+        if (firstTarget) {
+          firstTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Start tour after scroll completes
+          setTimeout(() => {
+            tourRef.current.start();
+          }, 300);
+        } else {
+          tourRef.current.start();
+        }
+      }, 100);
     }
   };
 

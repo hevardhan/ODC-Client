@@ -27,15 +27,10 @@ export function Login() {
     setLoading(true)
     try {
       const result = await login(email, password)
+      
       if (result.success) {
         // Check user status and redirect accordingly
         const { data: { user: authUser } } = await supabase.auth.getUser()
-        
-        // Check if email is verified
-        if (!authUser.email_confirmed_at) {
-          navigate("/email-verification")
-          return
-        }
         
         // Check if onboarding is completed
         const { data: sellerData } = await supabase
@@ -44,17 +39,21 @@ export function Login() {
           .eq('id', authUser.id)
           .single()
         
+        // Wait a bit for auth state to fully update
+        await new Promise(resolve => setTimeout(resolve, 300))
+        
         if (!sellerData?.onboarding_completed) {
-          navigate("/onboarding")
+          navigate("/onboarding", { replace: true })
         } else {
-          navigate("/dashboard")
+          navigate("/dashboard", { replace: true })
         }
       } else {
         setError(result.error || "Invalid credentials")
+        setLoading(false)
       }
     } catch (err) {
+      console.error('Login error:', err)
       setError("Failed to log in. Please try again.")
-    } finally {
       setLoading(false)
     }
   }

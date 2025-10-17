@@ -21,11 +21,17 @@ export function EmailVerification() {
         
         // If already verified, redirect to onboarding
         if (session.user.email_confirmed_at) {
-          navigate('/onboarding');
+          navigate('/onboarding', { replace: true });
         }
       } else {
-        // No session, redirect to login
-        navigate('/login');
+        // No session - check localStorage for pending email
+        const pendingEmail = localStorage.getItem('pendingVerificationEmail');
+        if (pendingEmail) {
+          setEmail(pendingEmail);
+        } else {
+          // No session and no pending email, redirect to login
+          navigate('/login', { replace: true });
+        }
       }
     };
     
@@ -34,8 +40,9 @@ export function EmailVerification() {
     // Listen for email verification
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user?.email_confirmed_at) {
-        // Email verified! Redirect to onboarding
-        navigate('/onboarding');
+        // Email verified! Clear pending email and redirect to onboarding
+        localStorage.removeItem('pendingVerificationEmail');
+        navigate('/onboarding', { replace: true });
       }
     });
 

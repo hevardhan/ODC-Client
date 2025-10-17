@@ -1,20 +1,11 @@
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-
-const orders = [
-  { id: "#ORD-001", customer: "Alice Johnson", product: "Wireless Headphones", amount: "$89.99", status: "Delivered", date: "2024-03-15" },
-  { id: "#ORD-002", customer: "Bob Smith", product: "Smart Watch", amount: "$299.99", status: "Pending", date: "2024-03-14" },
-  { id: "#ORD-003", customer: "Carol White", product: "Laptop Stand", amount: "$45.50", status: "Delivered", date: "2024-03-13" },
-  { id: "#ORD-004", customer: "David Brown", product: "USB-C Cable", amount: "$12.99", status: "Cancelled", date: "2024-03-12" },
-  { id: "#ORD-005", customer: "Emma Davis", product: "Phone Case", amount: "$19.99", status: "Delivered", date: "2024-03-11" },
-  { id: "#ORD-006", customer: "Frank Wilson", product: "Bluetooth Speaker", amount: "$65.00", status: "Pending", date: "2024-03-10" },
-  { id: "#ORD-007", customer: "Grace Lee", product: "Tablet Case", amount: "$29.99", status: "Delivered", date: "2024-03-09" },
-  { id: "#ORD-008", customer: "Henry Martinez", product: "Power Bank", amount: "$39.99", status: "Pending", date: "2024-03-08" },
-  { id: "#ORD-009", customer: "Ivy Garcia", product: "Wireless Mouse", amount: "$24.99", status: "Delivered", date: "2024-03-07" },
-  { id: "#ORD-010", customer: "Jack Anderson", product: "Keyboard", amount: "$79.99", status: "Cancelled", date: "2024-03-06" },
-]
+import { Button } from "@/components/ui/button"
+import { useAuth } from "@/context/AuthContext"
+import { getOrders, updateOrderStatus } from "@/services/orderService"
 
 const getStatusBadge = (status) => {
   const variants = {
@@ -26,6 +17,54 @@ const getStatusBadge = (status) => {
 }
 
 export function Orders() {
+  const { user } = useAuth()
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [updatingOrderId, setUpdatingOrderId] = useState(null)
+
+  useEffect(() => {
+    if (user) {
+      loadOrders()
+    }
+  }, [user])
+
+  const loadOrders = async () => {
+    try {
+      setLoading(true)
+      const data = await getOrders()
+      setOrders(data)
+    } catch (error) {
+      console.error("Error loading orders:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusUpdate = async (orderId, newStatus) => {
+    try {
+      setUpdatingOrderId(orderId)
+      await updateOrderStatus(orderId, newStatus)
+      // Reload orders to get updated data
+      await loadOrders()
+    } catch (error) {
+      console.error("Error updating order status:", error)
+      alert("Failed to update order status")
+    } finally {
+      setUpdatingOrderId(null)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading orders...</p>
+        </div>
+      </div>
+    )
+  }
+  
   return (
     <div className="space-y-6">
       <div>
@@ -46,29 +85,62 @@ export function Orders() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Order ID</TableHead>
                   <TableHead>Customer Name</TableHead>
                   <TableHead>Product</TableHead>
+                  <TableHead>Quantity</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id}</TableCell>
-                    <TableCell>{order.customer}</TableCell>
-                    <TableCell>{order.product}</TableCell>
-                    <TableCell>{order.amount}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadge(order.status)}>
-                        {order.status}
-                      </Badge>
+                {orders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      No orders yet
                     </TableCell>
-                    <TableCell className="text-muted-foreground">{order.date}</TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  orders.map((order) => (
+                    <TableRow key={order.id}>
+                      <TableCell>{order.customer_name}</TableCell>
+                      <TableCell>{order.products?.name || 'Product removed'}</TableCell>
+                      <TableCell>{order.quantity}</TableCell>
+                      <TableCell>${parseFloat(order.amount).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadge(order.status)}>
+                          {order.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {new Date(order.order_date).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {order.status === 'Pending' && (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleStatusUpdate(order.id, 'Delivered')}
+                              disabled={updatingOrderId === order.id}
+                            >
+                              Mark Delivered
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleStatusUpdate(order.id, 'Cancelled')}
+                              disabled={updatingOrderId === order.id}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>

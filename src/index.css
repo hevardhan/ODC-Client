@@ -1,6 +1,146 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@sjmc11/tourguidejs/src/scss/tour.scss";
+
+/* Tour Guide Base Styles */
+[data-tg-tour] {
+  scroll-margin: 30px 0;
+}
+
+.tg-backdrop {
+  position: absolute;
+  align-items: center;
+  justify-content: center;
+  display: none;
+  z-index: 99;
+  border-radius: 7px;
+  box-shadow: rgba(33, 33, 33, 0.8) 0 0 1px 2px, rgba(33, 33, 33, .8) 0 0 0 1000vh;
+  border: 1px solid rgba(193, 192, 232, 0.5);
+  top: 50vh;
+  left: 50vw;
+  width: 0;
+  height: 0;
+}
+
+.tg-backdrop.tg-backdrop-animate {
+  transition: all 300ms;
+}
+
+.tg-backdrop.allow-interaction {
+  pointer-events: none;
+}
+
+.tg-dialog {
+  border-radius: 12px;
+  animation-delay: 100ms;
+  min-height: 120px;
+  background: #fff;
+  color: #252525;
+  max-width: 340px;
+  width: max-content;
+  z-index: 9999;
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.tg-dialog-header {
+  display: flex;
+  align-items: center;
+  padding: 25px 25px 0 25px;
+}
+
+.tg-dialog-title {
+  font-size: 1rem;
+  font-weight: 700;
+  flex: 1;
+  margin: 0;
+}
+
+.tg-dialog-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 10px;
+  font-size: 1.5rem;
+  line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.tg-dialog-close-btn:hover {
+  opacity: 1;
+}
+
+.tg-dialog-body {
+  padding: 15px 25px;
+  line-height: 1.5;
+}
+
+.tg-dialog-footer {
+  padding: 0 25px 25px 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tg-dialog-progress {
+  flex: 1;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.tg-dialog-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.tg-dialog button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.tg-dialog button.tg-btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.tg-dialog button.tg-btn-primary:hover {
+  background: #2563eb;
+}
+
+.tg-dialog button.tg-btn-secondary {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.tg-dialog button.tg-btn-secondary:hover {
+  background: #d1d5db;
+}
+
+/* Dark mode support */
+.dark .tg-dialog {
+  background: #1f2937;
+  color: #f3f4f6;
+}
+
+.dark .tg-dialog button.tg-btn-secondary {
+  background: #374151;
+  color: #f3f4f6;
+}
+
+.dark .tg-dialog button.tg-btn-secondary:hover {
+  background: #4b5563;
+}
+
 
 @custom-variant dark (&:is(.dark *));
 
@@ -314,3 +454,64 @@
   pointer-events: none;
   height: 0;
 }
+
+/* Tour Guide Custom Styles - Fix positioning and visibility */
+.tg-dialog {
+  max-width: 400px !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  margin: 20px !important;
+  z-index: 10000 !important;
+}
+
+.tg-dialog-container {
+  padding: 20px !important;
+}
+
+/* Ensure tour dialog stays within viewport */
+.tg-dialog[data-position="top"] {
+  margin-bottom: 20px !important;
+}
+
+.tg-dialog[data-position="bottom"] {
+  margin-top: 20px !important;
+}
+
+.tg-dialog[data-position="left"] {
+  margin-right: 20px !important;
+}
+
+.tg-dialog[data-position="right"] {
+  margin-left: 20px !important;
+}
+
+/* Fix overlay z-index */
+.tg-overlay {
+  z-index: 9999 !important;
+}
+
+/* Ensure tour steps are visible */
+.tg-spotlight {
+  z-index: 9998 !important;
+}
+
+/* Add scrollbar to tour content if needed */
+.tg-dialog-body {
+  max-height: 60vh !important;
+  overflow-y: auto !important;
+}
+
+/* Make sure buttons are always visible */
+.tg-dialog-footer {
+  position: sticky !important;
+  bottom: 0 !important;
+  background: inherit !important;
+  padding-top: 10px !important;
+  margin-top: 10px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark .tg-dialog-footer {
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
+

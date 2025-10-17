@@ -1,48 +1,91 @@
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { DollarSign, TrendingUp, Calendar } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
-
-const earningsData = [
-  { month: 'Jan', earnings: 4200 },
-  { month: 'Feb', earnings: 3800 },
-  { month: 'Mar', earnings: 5100 },
-  { month: 'Apr', earnings: 4600 },
-  { month: 'May', earnings: 6200 },
-  { month: 'Jun', earnings: 5800 },
-  { month: 'Jul', earnings: 6500 },
-  { month: 'Aug', earnings: 7100 },
-  { month: 'Sep', earnings: 6800 },
-  { month: 'Oct', earnings: 7500 },
-  { month: 'Nov', earnings: 8200 },
-  { month: 'Dec', earnings: 9100 }
-]
-
-const summaryCards = [
-  {
-    title: "Total Earnings",
-    value: "$75,231",
-    icon: DollarSign,
-    description: "All-time earnings",
-    trend: "+20.1% from last year"
-  },
-  {
-    title: "This Month",
-    value: "$9,100",
-    icon: Calendar,
-    description: "Current month earnings",
-    trend: "+10.2% from last month"
-  },
-  {
-    title: "Average Monthly",
-    value: "$6,269",
-    icon: TrendingUp,
-    description: "Monthly average",
-    trend: "+15.3% from last year"
-  }
-]
+import { useAuth } from "@/context/AuthContext"
+import { getMonthlyEarnings, getEarningsStats } from "@/services/earningsService"
 
 export function Earnings() {
+  const { user } = useAuth()
+  const [earningsData, setEarningsData] = useState([])
+  const [stats, setStats] = useState({
+    total: 0,
+    thisMonth: 0,
+    average: 0,
+    monthlyChange: 0
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (user) {
+      loadEarningsData()
+    }
+  }, [user])
+
+  const loadEarningsData = async () => {
+    try {
+      setLoading(true)
+      const [monthlyData, statsData] = await Promise.all([
+        getMonthlyEarnings(),
+        getEarningsStats()
+      ])
+      
+      // Format monthly data for chart
+      const chartData = monthlyData.map(item => ({
+        month: getMonthName(item.month),
+        earnings: item.earnings
+      }))
+      
+      setEarningsData(chartData)
+      setStats(statsData)
+    } catch (error) {
+      console.error("Error loading earnings data:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getMonthName = (month) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return months[month - 1] || 'Unknown'
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-muted-foreground">Loading earnings...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const summaryCards = [
+    {
+      title: "Total Earnings",
+      value: `$${stats.total.toFixed(2)}`,
+      icon: DollarSign,
+      description: "All-time earnings",
+      trend: "+20.1% from last year"
+    },
+    {
+      title: "This Month",
+      value: `$${stats.thisMonth.toFixed(2)}`,
+      icon: Calendar,
+      description: "Current month earnings",
+      trend: `${stats.monthlyChange > 0 ? '+' : ''}${stats.monthlyChange}% from last month`
+    },
+    {
+      title: "Average Monthly",
+      value: `$${stats.average.toFixed(2)}`,
+      icon: TrendingUp,
+      description: "Monthly average",
+      trend: "+15.3% from last year"
+    }
+  ]
+  
   return (
     <div className="space-y-6">
       <div>

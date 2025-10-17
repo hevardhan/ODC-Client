@@ -5,7 +5,6 @@ import { ProtectedRoute } from '@/components/ProtectedRoute'
 import { Layout } from '@/components/layout/Layout'
 import { Login } from '@/pages/Login'
 import { Signup } from '@/pages/Signup'
-import { EmailVerification } from '@/pages/EmailVerification'
 import { Onboarding } from '@/pages/Onboarding'
 import { Dashboard } from '@/pages/Dashboard'
 import { Products } from '@/pages/Products'
@@ -24,21 +23,14 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             
-            {/* Email verification - requires auth but not onboarding */}
-            <Route path="/email-verification" element={
-              <ProtectedRoute requireOnboarding={false}>
-                <EmailVerification />
-              </ProtectedRoute>
-            } />
-            
-            {/* Onboarding - requires auth and email verification but not completed onboarding */}
+            {/* Onboarding - requires auth but not completed onboarding */}
             <Route path="/onboarding" element={
               <ProtectedRoute requireOnboarding={false}>
                 <Onboarding />
               </ProtectedRoute>
             } />
             
-            {/* Main app - requires auth, email verification, and completed onboarding */}
+            {/* Main app - requires auth and completed onboarding */}
             <Route
               path="/"
               element={

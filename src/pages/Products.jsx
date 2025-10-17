@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/context/AuthContext"
 import { 
   getAllProducts, 
   deleteProduct,
@@ -15,32 +16,46 @@ import {
 
 export function Products() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [products, setProducts] = useState([])
   const [stats, setStats] = useState({ total: 0, inStock: 0, lowStock: 0, outOfStock: 0 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // Load products on mount
+  // Load products on mount and when user changes
   useEffect(() => {
-    loadProducts()
-    loadStats()
-  }, [])
+    if (user) {
+      loadProducts()
+      loadStats()
+    }
+  }, [user])
 
   const loadProducts = async () => {
-    setLoading(true)
-    const result = await getAllProducts()
-    if (result.success) {
-      setProducts(result.data)
-    } else {
-      setError(result.error)
+    try {
+      setLoading(true)
+      setError("")
+      const result = await getAllProducts()
+      if (result.success) {
+        setProducts(result.data)
+      } else {
+        setError(result.error)
+      }
+    } catch (err) {
+      console.error('Error loading products:', err)
+      setError('Failed to load products')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const loadStats = async () => {
-    const result = await getProductStats()
-    if (result.success) {
-      setStats(result.data)
+    try {
+      const result = await getProductStats()
+      if (result.success) {
+        setStats(result.data)
+      }
+    } catch (err) {
+      console.error('Error loading stats:', err)
     }
   }
 

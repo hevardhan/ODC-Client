@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { RichTextEditor } from "@/components/RichTextEditor"
 import { MultipleImageUpload } from "@/components/MultipleImageUpload"
+import { useAuth } from "@/context/AuthContext"
 import { 
   createProduct, 
   updateProduct, 
@@ -24,6 +25,7 @@ export function AddEditProduct() {
   const navigate = useNavigate()
   const { id } = useParams()
   const [searchParams] = useSearchParams()
+  const { user } = useAuth()
   const isEdit = !!id || searchParams.get('edit') === 'true'
   
   const [loading, setLoading] = useState(false)
@@ -44,61 +46,74 @@ export function AddEditProduct() {
 
   // Load categories on mount
   useEffect(() => {
-    loadCategories()
-  }, [])
+    if (user) {
+      loadCategories()
+    }
+  }, [user])
 
   // Load product data if editing
   useEffect(() => {
-    if (id) {
+    if (id && user) {
       loadProduct()
     }
-  }, [id])
+  }, [id, user])
 
   const loadCategories = async () => {
-    const result = await getAllCategories()
-    if (result.success) {
-      setCategories(result.data)
-      // Set default category if not editing
-      if (!id && result.data.length > 0) {
-        setFormData(prev => ({
-          ...prev,
-          category_id: result.data[0].id
-        }))
+    try {
+      const result = await getAllCategories()
+      if (result.success) {
+        setCategories(result.data)
+        // Set default category if not editing
+        if (!id && result.data.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            category_id: result.data[0].id
+          }))
+        }
       }
+    } catch (err) {
+      console.error('Error loading categories:', err)
     }
   }
 
   const loadProduct = async () => {
-    setLoading(true)
-    const result = await getProduct(id)
-    if (result.success) {
-      const product = result.data
-      setFormData({
-        name: product.name || "",
-        description: product.description || "",
-        price: product.price || "",
-        stock: product.stock || "",
-        category_id: product.category_id || "",
-        product_details: product.product_details || "",
-        specifications: product.specifications || "",
-      })
-      
-      // Load existing images
-      const imagesResult = await getProductImages(id)
-      if (imagesResult.success && imagesResult.data) {
-        const existingImages = imagesResult.data.map((img, index) => ({
-          id: img.id,
-          url: img.image_url,
-          isPrimary: img.is_primary,
-          order: img.display_order,
-          existing: true // Mark as existing (not new upload)
-        }))
-        setProductImages(existingImages)
+    try {
+      setLoading(true)
+      setError("")
+      const result = await getProduct(id)
+      if (result.success) {
+        const product = result.data
+        setFormData({
+          name: product.name || "",
+          description: product.description || "",
+          price: product.price || "",
+          stock: product.stock || "",
+          category_id: product.category_id || "",
+          product_details: product.product_details || "",
+          specifications: product.specifications || "",
+        })
+        
+        // Load existing images
+        const imagesResult = await getProductImages(id)
+        if (imagesResult.success && imagesResult.data) {
+          const existingImages = imagesResult.data.map((img, index) => ({
+            id: img.id,
+            url: img.image_url,
+            isPrimary: img.is_primary,
+            order: img.display_order,
+            existing: true // Mark as existing (not new upload)
+          }))
+          setProductImages(existingImages)
+        }
+      } else {
+        setError(result.error)
       }
-    } else {
-      setError(result.error)
+    } catch (err) {
+      console.error('Error loading product:', err)
+      setError('Failed to load product')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleInputChange = (e) => {

@@ -48,14 +48,16 @@ export function Signup() {
     try {
       const result = await signup(formData.email, formData.password, formData.name)
       if (result.success) {
-        // Redirect to email verification page
-        navigate("/email-verification")
+        // Wait a bit for auth state to fully update
+        await new Promise(resolve => setTimeout(resolve, 500))
+        // Redirect to onboarding page after successful signup
+        navigate("/onboarding", { replace: true })
       } else {
         setError(result.error || "Registration failed")
+        setLoading(false)
       }
     } catch (err) {
       setError("Failed to sign up. Please try again.")
-    } finally {
       setLoading(false)
     }
   }

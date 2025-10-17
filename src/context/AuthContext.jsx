@@ -112,6 +112,10 @@ export const AuthProvider = ({ children }) => {
 
       if (authError) throw authError;
 
+      if (!authData.user) {
+        throw new Error('Signup failed - no user data returned');
+      }
+
       // Wait a bit for auth to complete
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -133,8 +137,10 @@ export const AuthProvider = ({ children }) => {
         // Don't fail signup if profile creation fails - loadUserProfile will handle it
       }
 
+      // Load user profile to set user state
       await loadUserProfile(authData.user.id);
-      return { success: true };
+      
+      return { success: true, user: authData.user };
     } catch (error) {
       console.error('Signup error:', error);
       return { success: false, error: error.message };
@@ -167,8 +173,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    if (!user?.id) return;
+    await loadUserProfile(user.id);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, signup, logout, loading, updateProfile }}>
+    <AuthContext.Provider value={{ user, login, signup, logout, loading, updateProfile, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

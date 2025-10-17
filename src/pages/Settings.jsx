@@ -1,24 +1,48 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/context/AuthContext"
+import { supabase } from "@/lib/supabase"
 
 export function Settings() {
-  const { user, updateProfile } = useAuth()
+  const { user, updateProfile, refreshUser } = useAuth()
   const [profileData, setProfileData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    shopName: user?.shopName || "",
+    fullName: "",
+    email: "",
+    shopName: "",
+    phone: "",
+    businessName: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: ""
   })
   const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
     newPassword: "",
     confirmPassword: ""
   })
   const [message, setMessage] = useState({ type: "", text: "" })
+  const [loading, setLoading] = useState(false)
+
+  // Update profile data when user loads
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        fullName: user.full_name || "",
+        email: user.email || "",
+        shopName: user.shop_name || "",
+        phone: user.phone || "",
+        businessName: user.business_name || "",
+        address: user.address || "",
+        city: user.city || "",
+        state: user.state || "",
+        zipCode: user.zip_code || ""
+      })
+    }
+  }, [user])
 
   const handleProfileChange = (e) => {
     setProfileData({
@@ -34,26 +58,76 @@ export function Settings() {
     })
   }
 
-  const handleProfileSubmit = (e) => {
+  const handleProfileSubmit = async (e) => {
     e.preventDefault()
-    updateProfile(profileData)
-    setMessage({ type: "success", text: "Profile updated successfully!" })
-    setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+    
+    try {
+      setLoading(true)
+      
+      const { error } = await supabase
+        .from('sellers')
+        .update({
+          full_name: profileData.fullName,
+          shop_name: profileData.shopName,
+          phone: profileData.phone,
+          business_name: profileData.businessName,
+          address: profileData.address,
+          city: profileData.city,
+          state: profileData.state,
+          zip_code: profileData.zipCode
+        })
+        .eq('id', user.id)
+
+      if (error) throw error
+
+      // Refresh user data in context
+      await refreshUser()
+      
+      setMessage({ type: "success", text: "Profile updated successfully!" })
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      setMessage({ type: "error", text: "Failed to update profile. Please try again." })
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault()
+    
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       setMessage({ type: "error", text: "Passwords do not match!" })
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000)
       return
     }
+    
     if (passwordData.newPassword.length < 6) {
       setMessage({ type: "error", text: "Password must be at least 6 characters!" })
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000)
       return
     }
-    setMessage({ type: "success", text: "Password updated successfully!" })
-    setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
-    setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+
+    try {
+      setLoading(true)
+      
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword
+      })
+
+      if (error) throw error
+
+      setMessage({ type: "success", text: "Password updated successfully!" })
+      setPasswordData({ newPassword: "", confirmPassword: "" })
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+    } catch (error) {
+      console.error('Error updating password:', error)
+      setMessage({ type: "error", text: "Failed to update password. Please try again." })
+      setTimeout(() => setMessage({ type: "", text: "" }), 3000)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -88,34 +162,95 @@ export function Settings() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleProfileSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name</label>
-                <Input
-                  name="name"
-                  type="text"
-                  value={profileData.name}
-                  onChange={handleProfileChange}
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Full Name</label>
+                  <Input
+                    name="fullName"
+                    type="text"
+                    value={profileData.fullName}
+                    onChange={handleProfileChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Email</label>
+                  <Input
+                    name="email"
+                    type="email"
+                    value={profileData.email}
+                    disabled
+                    className="bg-muted"
+                  />
+                  <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Shop Name</label>
+                  <Input
+                    name="shopName"
+                    type="text"
+                    value={profileData.shopName}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Business Name</label>
+                  <Input
+                    name="businessName"
+                    type="text"
+                    value={profileData.businessName}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Phone</label>
+                  <Input
+                    name="phone"
+                    type="tel"
+                    value={profileData.phone}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Address</label>
+                  <Input
+                    name="address"
+                    type="text"
+                    value={profileData.address}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">City</label>
+                  <Input
+                    name="city"
+                    type="text"
+                    value={profileData.city}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">State</label>
+                  <Input
+                    name="state"
+                    type="text"
+                    value={profileData.state}
+                    onChange={handleProfileChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">ZIP Code</label>
+                  <Input
+                    name="zipCode"
+                    type="text"
+                    value={profileData.zipCode}
+                    onChange={handleProfileChange}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input
-                  name="email"
-                  type="email"
-                  value={profileData.email}
-                  onChange={handleProfileChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Shop Name</label>
-                <Input
-                  name="shopName"
-                  type="text"
-                  value={profileData.shopName}
-                  onChange={handleProfileChange}
-                />
-              </div>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
             </form>
           </CardContent>
         </Card>
@@ -134,21 +269,13 @@ export function Settings() {
           <CardContent>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Current Password</label>
-                <Input
-                  name="currentPassword"
-                  type="password"
-                  value={passwordData.currentPassword}
-                  onChange={handlePasswordChange}
-                />
-              </div>
-              <div className="space-y-2">
                 <label className="text-sm font-medium">New Password</label>
                 <Input
                   name="newPassword"
                   type="password"
                   value={passwordData.newPassword}
                   onChange={handlePasswordChange}
+                  required
                 />
               </div>
               <div className="space-y-2">
@@ -158,9 +285,12 @@ export function Settings() {
                   type="password"
                   value={passwordData.confirmPassword}
                   onChange={handlePasswordChange}
+                  required
                 />
               </div>
-              <Button type="submit">Update Password</Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Updating..." : "Update Password"}
+              </Button>
             </form>
           </CardContent>
         </Card>

@@ -20,7 +20,7 @@ export function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -123,12 +123,17 @@ export function Onboarding() {
 
       if (updateError) throw updateError;
 
-      // Redirect to dashboard with tour parameter
-      navigate('/dashboard?tour=start');
+      // Refresh user profile to get updated onboarding status
+      await refreshUser();
+      
+      // Wait for state to update
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Redirect to dashboard (tour disabled for now)
+      navigate('/dashboard', { replace: true });
     } catch (error) {
       console.error('Error saving onboarding data:', error);
       setError('Failed to save information. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
